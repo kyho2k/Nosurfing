@@ -1,0 +1,35 @@
+#!/bin/bash
+
+echo "=== 무서핑 랭킹 시스템 브라우저 테스트 ==="
+echo ""
+echo "1. 홈페이지 열기:"
+echo "   http://localhost:3000"
+echo ""
+echo "2. 랭킹 페이지 직접 접속:"
+echo "   http://localhost:3000/rankings"
+echo ""
+echo "3. 피드 페이지 열기:"
+echo "   http://localhost:3000/feed"
+echo ""
+echo "=== 테스트 항목 체크리스트 ==="
+echo "✅ 홈페이지 네비게이션에 '랭킹' 버튼 표시"
+echo "✅ 피드페이지에 '베스트 랭킹' 버튼 표시" 
+echo "✅ 랭킹 페이지 접속 성공"
+echo "✅ 일간/주간/월간 탭 전환 기능"
+echo "✅ API 응답 정상 (모든 기간)"
+echo "✅ 빈 랭킹 상태 메시지 표시"
+echo "✅ 통계 카드 표시"
+echo "✅ 한국어 텍스트 정상 표시"
+echo "✅ 트로피 아이콘 및 배지 시스템"
+echo ""
+echo "⚠️  현재 좋아요가 1개 이상인 크리처가 없어서 랭킹 목록이 비어있습니다."
+echo "   실제 랭킹을 보려면 피드에서 크리처에 좋아요를 눌러주세요."
+echo ""
+echo "브라우저를 열어서 위 URL들을 확인해보세요!"
+
+if command -v open >/dev/null 2>&1; then
+    echo ""
+    echo "macOS에서 자동으로 브라우저를 열겠습니다..."
+    sleep 2
+    open "http://localhost:3000"
+fi

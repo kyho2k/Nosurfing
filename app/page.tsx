@@ -2,202 +2,185 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Ghost, Plus, Users } from "lucide-react"
+import { Ghost, Eye, Users, TrendingUp, Gamepad2, Trophy } from "lucide-react"
 import { useRouter } from "next/navigation"
-
-interface CreatureData {
-  name: string
-  appearanceTime: string
-  location: string
-  characteristics: string
-  type: string
-}
+import { CreateCreatureForm } from "@/components/home/CreateCreatureForm"
+import { HeaderBannerAd, SidebarAd, MobileAnchorAd } from "@/components/ads/AdComponents"
 
 export default function HomePage() {
   const router = useRouter()
-  const [creature, setCreature] = useState<CreatureData>({
-    name: "",
-    appearanceTime: "",
-    location: "",
-    characteristics: "",
-    type: "",
-  })
-
-  const handleInputChange = (field: keyof CreatureData, value: string) => {
-    setCreature((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleCreateCreature = () => {
-    // 로컬 스토리지에 존재 저장
-    const existingCreatures = JSON.parse(localStorage.getItem("creatures") || "[]")
-    const newCreature = {
-      ...creature,
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-    }
-    existingCreatures.push(newCreature)
-    localStorage.setItem("creatures", JSON.stringify(existingCreatures))
-
-    // 피드 페이지로 이동
-    router.push("/feed")
-  }
-
-  const isFormValid =
-    creature.name && creature.appearanceTime && creature.location && creature.characteristics && creature.type
+  const [showCreateForm, setShowCreateForm] = useState(false)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
       <header className="p-6 border-b border-slate-700">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Ghost className="w-8 h-8 text-purple-400" />
-            <h1 className="text-3xl font-bold text-white">무서핑</h1>
-            <span className="text-gray-400 text-sm">- 존재들의 세계</span>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center space-x-3">
+              <Ghost className="w-10 h-10 text-purple-400" />
+              <div>
+                <h1 className="text-3xl font-bold text-white">무서핑</h1>
+                <p className="text-purple-300 text-sm">익명 공포 커뮤니티</p>
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <nav className="flex items-center space-x-4">
+              <Button 
+                variant="ghost" 
+                onClick={() => router.push("/feed")}
+                className="text-gray-300 hover:text-white"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                피드 보기
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => router.push("/game")}
+                className="text-gray-300 hover:text-white"
+              >
+                <Gamepad2 className="w-4 h-4 mr-2" />
+                미니게임
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => router.push("/rankings")}
+                className="text-gray-300 hover:text-white"
+              >
+                <Trophy className="w-4 h-4 mr-2" />
+                랭킹
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => router.push("/about")}
+                className="text-gray-300 hover:text-white"
+              >
+                소개
+              </Button>
+            </nav>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => router.push("/feed")}
-            className="border-purple-400 text-purple-400 hover:bg-purple-400 hover:text-white"
-          >
-            <Users className="w-4 h-4 mr-2" />
-            피드 보기
-          </Button>
         </div>
       </header>
 
+      {/* Header Banner Ad */}
+      <div className="px-6">
+        <HeaderBannerAd />
+      </div>
+
       {/* Main Content */}
       <main className="p-6">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-4xl font-bold text-white mb-4">당신만의 무서운 존재를 만들어보세요</h2>
-            <p className="text-gray-300 text-lg">
-              상상 속의 기괴하고 무서운 존재를 세상에 공개하고, AI가 만든 괴담을 확인해보세요
-            </p>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-3">
+          {!showCreateForm ? (
+            <>
+              {/* Hero Section */}
+              <div className="text-center py-16">
+                <div className="mb-8">
+                  <Ghost className="w-24 h-24 text-purple-400 mx-auto mb-6 animate-pulse" />
+                  <h2 className="text-5xl font-bold text-white mb-4">
+                    당신의 공포를<br />세상에 알려주세요
+                  </h2>
+                  <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+                    익명으로 무서운 이야기를 만들고 공유하세요.<br />
+                    AI가 당신의 상상을 더욱 생생한 공포로 만들어드립니다.
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+                  <Button 
+                    size="lg"
+                    onClick={() => setShowCreateForm(true)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105"
+                  >
+                    <Ghost className="w-6 h-6 mr-3" />
+                    새로운 존재 만들기
+                  </Button>
+                  <Button 
+                    size="lg"
+                    variant="outline"
+                    onClick={() => router.push("/feed")}
+                    className="border-purple-400 text-purple-300 hover:bg-purple-600 hover:text-white px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105"
+                  >
+                    <Eye className="w-6 h-6 mr-3" />
+                    존재들 둘러보기
+                  </Button>
+                  <Button 
+                    size="lg"
+                    variant="outline"
+                    onClick={() => router.push("/game")}
+                    className="border-green-400 text-green-300 hover:bg-green-600 hover:text-white px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105"
+                  >
+                    <Gamepad2 className="w-6 h-6 mr-3" />
+                    팝핑 귀신방울
+                  </Button>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+                  <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
+                    <Users className="w-8 h-8 text-purple-400 mx-auto mb-3" />
+                    <div className="text-xl font-bold text-white mb-1">완전 익명</div>
+                    <p className="text-gray-400 text-sm">개인정보 수집 없음</p>
+                  </div>
+                  <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
+                    <TrendingUp className="w-8 h-8 text-purple-400 mx-auto mb-3" />
+                    <div className="text-xl font-bold text-white mb-1">AI 생성</div>
+                    <p className="text-gray-400 text-sm">자동 이미지 & 스토리</p>
+                  </div>
+                  <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
+                    <Ghost className="w-8 h-8 text-purple-400 mx-auto mb-3" />
+                    <div className="text-xl font-bold text-white mb-1">공포 특화</div>
+                    <p className="text-gray-400 text-sm">괴담 & 호러 전용</p>
+                  </div>
+                  <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
+                    <Gamepad2 className="w-8 h-8 text-green-400 mx-auto mb-3" />
+                    <div className="text-xl font-bold text-white mb-1">미니게임</div>
+                    <p className="text-gray-400 text-sm">팝핑 귀신방울</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Create Form Section */
+            <div className="max-w-2xl mx-auto py-8">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-3xl font-bold text-white">새로운 존재 만들기</h2>
+                <Button 
+                  variant="ghost"
+                  onClick={() => setShowCreateForm(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  ← 돌아가기
+                </Button>
+              </div>
+              <CreateCreatureForm />
+            </div>
+          )}
           </div>
-
-          <Card className="bg-slate-800 border-slate-700 shadow-2xl">
-            <CardHeader>
-              <CardTitle className="text-2xl text-white flex items-center">
-                <Plus className="w-6 h-6 mr-2 text-purple-400" />
-                새로운 존재 만들기
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* 이름 */}
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-white font-medium">
-                  존재의 이름
-                </Label>
-                <Input
-                  id="name"
-                  placeholder="예: 계단 밑의 그림자, 새벽 3시의 속삭임..."
-                  value={creature.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  className="bg-slate-700 border-slate-600 text-white placeholder-gray-400"
-                />
-              </div>
-
-              {/* 출몰 시간 */}
-              <div className="space-y-2">
-                <Label htmlFor="time" className="text-white font-medium">
-                  출몰 시간
-                </Label>
-                <Input
-                  id="time"
-                  placeholder="예: 새벽 3시 33분, 보름달이 뜨는 밤..."
-                  value={creature.appearanceTime}
-                  onChange={(e) => handleInputChange("appearanceTime", e.target.value)}
-                  className="bg-slate-700 border-slate-600 text-white placeholder-gray-400"
-                />
-              </div>
-
-              {/* 출몰 장소 */}
-              <div className="space-y-2">
-                <Label htmlFor="location" className="text-white font-medium">
-                  출몰 장소
-                </Label>
-                <Input
-                  id="location"
-                  placeholder="예: 오래된 학교 화장실, 지하철 마지막 칸..."
-                  value={creature.location}
-                  onChange={(e) => handleInputChange("location", e.target.value)}
-                  className="bg-slate-700 border-slate-600 text-white placeholder-gray-400"
-                />
-              </div>
-
-              {/* 유형 */}
-              <div className="space-y-2">
-                <Label htmlFor="type" className="text-white font-medium">
-                  존재 유형
-                </Label>
-                <Select onValueChange={(value) => handleInputChange("type", value)}>
-                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                    <SelectValue placeholder="존재의 유형을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-700 border-slate-600">
-                    <SelectItem value="ghost" className="text-white">
-                      유령/영혼
-                    </SelectItem>
-                    <SelectItem value="monster" className="text-white">
-                      괴물/크리처
-                    </SelectItem>
-                    <SelectItem value="demon" className="text-white">
-                      악마/악령
-                    </SelectItem>
-                    <SelectItem value="urban-legend" className="text-white">
-                      도시전설
-                    </SelectItem>
-                    <SelectItem value="cursed-object" className="text-white">
-                      저주받은 물건
-                    </SelectItem>
-                    <SelectItem value="supernatural" className="text-white">
-                      초자연적 현상
-                    </SelectItem>
-                    <SelectItem value="other" className="text-white">
-                      기타
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* 특징 */}
-              <div className="space-y-2">
-                <Label htmlFor="characteristics" className="text-white font-medium">
-                  특징 및 설명
-                </Label>
-                <Textarea
-                  id="characteristics"
-                  placeholder="존재의 외모, 행동, 능력 등을 자세히 설명해주세요..."
-                  value={creature.characteristics}
-                  onChange={(e) => handleInputChange("characteristics", e.target.value)}
-                  className="bg-slate-700 border-slate-600 text-white placeholder-gray-400 min-h-[120px]"
-                />
-              </div>
-
-              {/* 생성 버튼 */}
-              <Button
-                onClick={handleCreateCreature}
-                disabled={!isFormValid}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 text-lg font-medium transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              >
-                <Ghost className="w-5 h-5 mr-2" />
-                존재 만들기
-              </Button>
-            </CardContent>
-          </Card>
+          
+          {/* Sidebar - Desktop Only */}
+          <div className="hidden lg:block">
+            <div className="sticky top-8 space-y-6">
+              <SidebarAd />
+            </div>
+          </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="text-center text-gray-500 text-sm py-8">
-        <p>© 2024 무서핑 - 당신의 상상이 현실이 되는 곳</p>
+      <footer className="border-t border-slate-700 p-6 mt-16">
+        <div className="max-w-6xl mx-auto text-center">
+          <p className="text-gray-400">
+            무서핑 &copy; 2025. 익명 공포 커뮤니티 - 모든 이야기는 픽션입니다.
+          </p>
+        </div>
       </footer>
+
+      {/* Mobile Anchor Ad */}
+      <MobileAnchorAd />
     </div>
   )
 }

@@ -1,0 +1,37 @@
+{
+  "mcpServers": {
+    "TalkToFigma": {
+      "command": "bunx",
+      "args": [
+        "cursor-talk-to-figma-mcp@latest",
+        "--server=vps.sonnylab.com"
+      ]
+    },
+    "Framelink Figma MCP": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "figma-developer-mcp",
+        "--figma-api-key=figd_NJkewadDD4mJOkxXWDA-KAWGiaiL18oCEzKvjjpu",
+        "--stdio"
+      ]
+    },
+    "Context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ]
+    },
+    "browsermcp": {
+     "command": "npx",
+     "args": ["@browsermcp/mcp@latest"]
+    },
+    "mcp-feedback-enhanced": {
+     "command": "uvx",
+     "args": ["mcp-feedback-enhanced@latest"],
+     "timeout": 600,
+     "autoApprove": ["interactive_feedback"]
+    }
+  }
+}
