@@ -1,14 +1,13 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Ghost, Eye, Users, TrendingUp, Gamepad2, Trophy } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { CreateCreatureForm } from "@/components/home/CreateCreatureForm"
 import { HeaderBannerAd, SidebarAd, MobileAnchorAd } from "@/components/ads/AdComponents"
 
 export default function HomePage() {
-  const router = useRouter()
   const [showCreateForm, setShowCreateForm] = useState(false)
 
   return (
@@ -28,37 +27,41 @@ export default function HomePage() {
 
             {/* Navigation */}
             <nav className="flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => router.push("/feed")}
-                className="text-gray-300 hover:text-white"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                피드 보기
-              </Button>
-              <Button 
-                variant="ghost" 
-                onClick={() => router.push("/game")}
-                className="text-gray-300 hover:text-white"
-              >
-                <Gamepad2 className="w-4 h-4 mr-2" />
-                미니게임
-              </Button>
-              <Button 
-                variant="ghost" 
-                onClick={() => router.push("/rankings")}
-                className="text-gray-300 hover:text-white"
-              >
-                <Trophy className="w-4 h-4 mr-2" />
-                랭킹
-              </Button>
-              <Button 
-                variant="ghost" 
-                onClick={() => router.push("/about")}
-                className="text-gray-300 hover:text-white"
-              >
-                소개
-              </Button>
+              <Link href="/feed" passHref>
+                <Button 
+                  variant="ghost" 
+                  className="text-gray-300 hover:text-white"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  피드 보기
+                </Button>
+              </Link>
+              <Link href="/game" passHref>
+                <Button 
+                  variant="ghost" 
+                  className="text-gray-300 hover:text-white"
+                >
+                  <Gamepad2 className="w-4 h-4 mr-2" />
+                  미니게임
+                </Button>
+              </Link>
+              <Link href="/rankings" passHref>
+                <Button 
+                  variant="ghost" 
+                  className="text-gray-300 hover:text-white"
+                >
+                  <Trophy className="w-4 h-4 mr-2" />
+                  랭킹
+                </Button>
+              </Link>
+              <Link href="/about" passHref>
+                <Button 
+                  variant="ghost" 
+                  className="text-gray-300 hover:text-white"
+                >
+                  소개
+                </Button>
+              </Link>
             </nav>
           </div>
         </div>
@@ -98,24 +101,26 @@ export default function HomePage() {
                     <Ghost className="w-6 h-6 mr-3" />
                     새로운 존재 만들기
                   </Button>
-                  <Button 
-                    size="lg"
-                    variant="outline"
-                    onClick={() => router.push("/feed")}
-                    className="border-purple-400 text-purple-300 hover:bg-purple-600 hover:text-white px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105"
-                  >
-                    <Eye className="w-6 h-6 mr-3" />
-                    존재들 둘러보기
-                  </Button>
-                  <Button 
-                    size="lg"
-                    variant="outline"
-                    onClick={() => router.push("/game")}
-                    className="border-green-400 text-green-300 hover:bg-green-600 hover:text-white px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105"
-                  >
-                    <Gamepad2 className="w-6 h-6 mr-3" />
-                    팝핑 귀신방울
-                  </Button>
+                  <Link href="/feed" passHref>
+                    <Button 
+                      size="lg"
+                      variant="outline"
+                      className="border-purple-400 text-purple-300 hover:bg-purple-600 hover:text-white px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105"
+                    >
+                      <Eye className="w-6 h-6 mr-3" />
+                      존재들 둘러보기
+                    </Button>
+                  </Link>
+                  <Link href="/game" passHref>
+                    <Button 
+                      size="lg"
+                      variant="outline"
+                      className="border-green-400 text-green-300 hover:bg-green-600 hover:text-white px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105"
+                    >
+                      <Gamepad2 className="w-6 h-6 mr-3" />
+                      팝핑 귀신방울
+                    </Button>
+                  </Link>
                 </div>
 
                 {/* Stats */}

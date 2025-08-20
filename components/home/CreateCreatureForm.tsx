@@ -16,8 +16,7 @@ import {
 import { Ghost, Loader2, Plus, Sparkles, Wand2, Image } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-// import { supabase } from "@/lib/supabase"
-import { useSupabase } from "@/hooks/use-supabase"
+import { useAuth } from "@/components/auth/AuthProvider"
 
 interface CreatureData {
   name: string
@@ -47,7 +46,7 @@ interface AILimits {
 export function CreateCreatureForm() {
   const router = useRouter()
   const { toast } = useToast()
-  const { supabase, isLoading: isSupabaseLoading, error: supabaseError } = useSupabase()
+  const { supabase, isLoading: isSupabaseLoading, error: supabaseError, isAuthenticated } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [creature, setCreature] = useState<CreatureData>({
     name: "",
@@ -78,31 +77,16 @@ export function CreateCreatureForm() {
     canGenerate: true
   })
 
-  // PRD의 '익명 로그인' 요구사항에 따라, 컴포넌트 로드 시 익명 세션을 확인하고 없으면 생성합니다.
+  // 인증 상태 확인
   useEffect(() => {
-    if (!supabase || isSupabaseLoading) return;
-    
-    let mounted = true;
-    
-    const ensureAnonymousSession = async () => {
-      try {
-        if (!mounted) return;
-        
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session && mounted) {
-          await supabase.auth.signInAnonymously()
-        }
-      } catch (error) {
-        console.error('Failed to ensure anonymous session:', error)
-      }
+    if (!isAuthenticated && !isSupabaseLoading) {
+      toast({
+        title: "인증 필요",
+        description: "익명 세션을 생성하는 중입니다. 잠시만 기다려주세요.",
+        variant: "default",
+      })
     }
-    
-    ensureAnonymousSession()
-    
-    return () => {
-      mounted = false;
-    }
-  }, [supabase, isSupabaseLoading])
+  }, [isAuthenticated, isSupabaseLoading, toast])
 
   // AI 생성 제한 정보 가져오기
   useEffect(() => {
@@ -126,6 +110,11 @@ export function CreateCreatureForm() {
 
   const handleInputChange = (field: keyof CreatureData, value: string) => {
     setCreature((prev) => ({ ...prev, [field]: value }))
+    
+    // Browser MCP 호환성: 강제로 폼 검증 상태 업데이트
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Field ${field} updated:`, value.trim() || 'EMPTY')
+    }
   }
 
   // AI로 스토리와 이미지 생성
@@ -228,6 +217,51 @@ export function CreateCreatureForm() {
   }
 
   const handleCreateCreature = async () => {
+    // 인증 상태 체크 - 개발 환경에서는 익명 인증 없이도 허용
+    if (!supabase) {
+      toast({
+        title: "시스템 오류",
+        description: "Supabase 클라이언트를 초기화할 수 없습니다. 페이지를 새로고침해 주세요.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // 개발 환경에서 익명 인증이 비활성화된 경우 경고만 표시하고 계속 진행
+    if (!isAuthenticated && process.env.NODE_ENV === 'development') {
+      console.warn('익명 인증이 비활성화되어 있지만 개발 모드에서 게시물 작성을 허용합니다.')
+      toast({
+        title: "개발 모드",
+        description: "익명 인증 없이 개발 모드에서 게시물을 작성합니다.",
+      })
+    } else if (!isAuthenticated) {
+      // 프로덕션 환경에서는 재인증 시도
+      try {
+        toast({
+          title: "재인증 시도 중",
+          description: "익명 세션을 다시 생성하는 중입니다...",
+        })
+        
+        const { error: signInError } = await supabase.auth.signInAnonymously()
+        if (signInError) {
+          throw new Error(signInError.message)
+        }
+          
+        toast({
+          title: "재인증 성공", 
+          description: "익명 세션이 생성되었습니다. 다시 시도해주세요.",
+        })
+        return;
+      } catch (error: any) {
+        toast({
+          title: "인증 오류",
+          description: `인증에 실패했습니다: ${error.message}. 페이지를 새로고침해 주세요.`,
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
     setIsLoading(true)
     try {
       // AI 생성 모드일 때는 생성된 콘텐츠도 함께 전송
@@ -269,10 +303,16 @@ export function CreateCreatureForm() {
       }
 
       // 2단계: 검열 통과 시 크리처 생성
+      // 인증 토큰 가져오기
+      const { data: { session } } = await supabase.auth.getSession()
+      
       const response = await fetch("/api/creatures", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(session?.access_token && {
+            "Authorization": `Bearer ${session.access_token}`
+          })
         },
         body: JSON.stringify({
           ...creatureData,
@@ -323,15 +363,29 @@ export function CreateCreatureForm() {
 
   // 폼 유효성 검증 - 모드에 따라 다르게 적용
   const isFormValid = creationMode === 'manual' 
-    ? (creature.name &&
-       creature.appearance_time &&
-       creature.location &&
-       creature.description &&
-       creature.creature_type)
-    : (aiState.generatedStory && // AI 모드일 때는 스토리가 생성되어야 함
-       creature.appearance_time &&
-       creature.location &&
-       creature.creature_type)
+    ? (creature.name?.trim() &&
+       creature.appearance_time?.trim() &&
+       creature.location?.trim() &&
+       creature.description?.trim() &&
+       creature.creature_type?.trim())
+    : (aiState.generatedStory?.trim() && // AI 모드일 때는 스토리가 생성되어야 함
+       creature.appearance_time?.trim() &&
+       creature.location?.trim() &&
+       creature.creature_type?.trim())
+
+  // 디버깅용 로그 (개발 모드에서만)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Form validation debug:', {
+      creationMode,
+      name: creature.name?.trim() || 'EMPTY',
+      appearance_time: creature.appearance_time?.trim() || 'EMPTY', 
+      location: creature.location?.trim() || 'EMPTY',
+      description: creature.description?.trim() || 'EMPTY',
+      creature_type: creature.creature_type?.trim() || 'EMPTY',
+      generatedStory: aiState.generatedStory?.trim() || 'EMPTY',
+      isFormValid
+    })
+  }
 
   return (
     <Card className="bg-slate-800 border-slate-700 shadow-2xl">
@@ -455,6 +509,7 @@ export function CreateCreatureForm() {
                 placeholder="예: 계단 밑의 그림자, 새벽 3시의 속삭임..."
                 value={creature.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
+                onInput={(e) => handleInputChange("name", (e.target as HTMLInputElement).value)}
                 className="bg-slate-700 border-slate-600 text-white placeholder-gray-400"
                 disabled={isLoading}
               />
@@ -470,6 +525,7 @@ export function CreateCreatureForm() {
                 placeholder="예: 새벽 3시 33분, 보름달이 뜨는 밤..."
                 value={creature.appearance_time}
                 onChange={(e) => handleInputChange("appearance_time", e.target.value)}
+                onInput={(e) => handleInputChange("appearance_time", (e.target as HTMLInputElement).value)}
                 className="bg-slate-700 border-slate-600 text-white placeholder-gray-400"
                 disabled={isLoading}
               />
@@ -485,6 +541,7 @@ export function CreateCreatureForm() {
                 placeholder="예: 오래된 학교 화장실, 지하철 마지막 칸..."
                 value={creature.location}
                 onChange={(e) => handleInputChange("location", e.target.value)}
+                onInput={(e) => handleInputChange("location", (e.target as HTMLInputElement).value)}
                 className="bg-slate-700 border-slate-600 text-white placeholder-gray-400"
                 disabled={isLoading}
               />
@@ -540,6 +597,7 @@ export function CreateCreatureForm() {
                 onChange={(e) =>
                   handleInputChange("description", e.target.value)
                 }
+                onInput={(e) => handleInputChange("description", (e.target as HTMLTextAreaElement).value)}
                 className="bg-slate-700 border-slate-600 text-white placeholder-gray-400 min-h-[120px]"
                 disabled={isLoading}
               />
@@ -564,6 +622,7 @@ export function CreateCreatureForm() {
                 placeholder="AI가 생성한 이름을 수정하거나 새로 입력..."
                 value={creature.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
+                onInput={(e) => handleInputChange("name", (e.target as HTMLInputElement).value)}
                 className="bg-slate-700 border-slate-600 text-white placeholder-gray-400"
                 disabled={isLoading}
               />
@@ -578,6 +637,7 @@ export function CreateCreatureForm() {
                   placeholder="새벽 3시 33분..."
                   value={creature.appearance_time}
                   onChange={(e) => handleInputChange("appearance_time", e.target.value)}
+                  onInput={(e) => handleInputChange("appearance_time", (e.target as HTMLInputElement).value)}
                   className="bg-slate-700 border-slate-600 text-white placeholder-gray-400"
                   disabled={isLoading}
                 />
@@ -590,6 +650,7 @@ export function CreateCreatureForm() {
                   placeholder="오래된 학교..."
                   value={creature.location}
                   onChange={(e) => handleInputChange("location", e.target.value)}
+                  onInput={(e) => handleInputChange("location", (e.target as HTMLInputElement).value)}
                   className="bg-slate-700 border-slate-600 text-white placeholder-gray-400"
                   disabled={isLoading}
                 />
@@ -624,6 +685,7 @@ export function CreateCreatureForm() {
                 placeholder="AI 생성 스토리에 추가할 설명..."
                 value={creature.description}
                 onChange={(e) => handleInputChange("description", e.target.value)}
+                onInput={(e) => handleInputChange("description", (e.target as HTMLTextAreaElement).value)}
                 className="bg-slate-700 border-slate-600 text-white placeholder-gray-400 min-h-[80px]"
                 disabled={isLoading}
               />

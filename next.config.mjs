@@ -8,13 +8,14 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'arrpuarrykptututjdnq.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
   },
-  remotePatterns: [
-  {
-    protocol: 'https',
-    hostname: 'arrpuarrykptututjdnq.supabase.co',
-    pathname: '/storage/v1/object/public/**',
-   },
   // PWA 지원을 위한 설정
   experimental: {
     webVitalsAttribution: ['CLS', 'LCP']

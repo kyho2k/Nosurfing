@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Feed Test</title>
+</head>
+<body>
+    <h1>Testing Feed API</h1>
+    <div id="result">Loading...</div>
+    
+    <script>
+        console.log('Testing API call...');
+        
+        fetch('http://localhost:3001/api/creatures')
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data received:', data.length, 'creatures');
+                document.getElementById('result').innerHTML = 
+                    `<h2>Success!</h2><p>Found ${data.length} creatures</p>` +
+                    data.map(c => `<div>- ${c.name}</div>`).join('');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = 
+                    `<h2>Error!</h2><p>${error.message}</p>`;
+            });
+    </script>
+</body>
+</html>

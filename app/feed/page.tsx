@@ -4,10 +4,12 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Ghost, ArrowLeft, Sparkles, Clock, MapPin, User, Heart, Share2, Trophy } from "lucide-react"
+import { Ghost, ArrowLeft, Sparkles, Clock, MapPin, User, Heart, Share2, Trophy, MessageCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { ReportButton } from "@/components/ui/report-button"
 import { HeaderBannerAd, FeedInlineAd, ContentBottomAd, MobileAnchorAd } from "@/components/ads/AdComponents"
+import { useAuth } from "@/components/auth/AuthProvider"
+import { getSessionHeaders } from "@/lib/session-utils"
 
 interface Creature {
   id: number
@@ -19,6 +21,7 @@ interface Creature {
   created_at: string       // createdAt → created_at
   like_count?: number      // 좋아요 수 추가
   story?: string
+  is_liked?: boolean       // 사용자 좋아요 상태 추가
 }
 
 const typeLabels: Record<string, string> = {
@@ -32,14 +35,20 @@ const typeLabels: Record<string, string> = {
 }
 
 const generateStory = (creature: Creature): string => {
+  // 안전한 기본값 설정
+  const location = creature.location || '알 수 없는 곳'
+  const appearanceTime = creature.appearance_time || '어느 때'
+  const name = creature.name || '이름 모를 존재'
+  const description = creature.description || '설명할 수 없는 모습'
+
   const stories = [
-    `${creature.location}에서 ${creature.appearance_time}에 목격된 ${creature.name}. 목격자들은 ${creature.description}라고 증언했다. 그 후로 그 장소를 지나는 사람들은 이상한 기운을 느낀다고 한다...`,
+    `${location}에서 ${appearanceTime}에 목격된 ${name}. 목격자들은 ${description}라고 증언했다. 그 후로 그 장소를 지나는 사람들은 이상한 기운을 느낀다고 한다...`,
 
-    `어느 날 밤, ${creature.appearance_time}에 ${creature.location}에서 일어난 일이다. ${creature.name}이 나타났을 때, 주변은 갑자기 차가워졌다. ${creature.description} 그 존재를 본 사람들은 며칠간 악몽에 시달렸다고 한다.`,
+    `어느 날 밤, ${appearanceTime}에 ${location}에서 일어난 일이다. ${name}이 나타났을 때, 주변은 갑자기 차가워졌다. ${description} 그 존재를 본 사람들은 며칠간 악몽에 시달렸다고 한다.`,
 
-    `${creature.location}에는 오래된 전설이 있다. ${creature.appearance_time}마다 ${creature.name}이 나타난다는 것이다. ${creature.description} 지역 주민들은 그 시간에는 절대 그곳에 가지 않는다고 한다.`,
+    `${location}에는 오래된 전설이 있다. ${appearanceTime}마다 ${name}이 나타난다는 것이다. ${description} 지역 주민들은 그 시간에는 절대 그곳에 가지 않는다고 한다.`,
 
-    `최근 ${creature.location}에서 기괴한 목격담이 늘고 있다. ${creature.appearance_time}에 나타나는 ${creature.name}에 대한 것이다. ${creature.description} 당신이라면... 그 존재와 마주쳤을 때 어떻게 하겠는가?`,
+    `최근 ${location}에서 기괴한 목격담이 늘고 있다. ${appearanceTime}에 나타나는 ${name}에 대한 것이다. ${description} 당신이라면... 그 존재와 마주쳤을 때 어떻게 하겠는가?`,
   ]
 
   return stories[Math.floor(Math.random() * stories.length)]
@@ -47,59 +56,130 @@ const generateStory = (creature: Creature): string => {
 
 export default function FeedPage() {
   const router = useRouter()
+  const { supabase, isAuthenticated, isLoading: authLoading } = useAuth()
   const [creatures, setCreatures] = useState<Creature[]>([])
   const [loading, setLoading] = useState(true)
   const [likingCreature, setLikingCreature] = useState<number | null>(null)
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchCreatures = async () => {
       try {
-        const response = await fetch("/api/creatures")
+        const response = await fetch("/api/creatures", {
+          headers: getSessionHeaders()
+        })
         if (!response.ok) {
-          throw new Error("Failed to fetch creatures")
+          throw new Error(`Failed to fetch creatures: ${response.status}`)
         }
         const data = await response.json()
-        const creaturesWithStories = data.map((creature: Creature) => ({
-          ...creature,
-          story: generateStory(creature),
-        }))
-        setCreatures(creaturesWithStories)
-      } catch (error) {
-        console.error(error)
-      } finally {
-        setLoading(false)
+        
+        if (isMounted) {
+          // 각 게시물의 좋아요 상태를 병렬로 가져오기
+          const creaturesWithLikeStatus = await Promise.all(
+            data.map(async (creature: Creature) => {
+              try {
+                const likeResponse = await fetch(`/api/creatures/${creature.id}/like`, {
+                  method: 'GET',
+                  headers: getSessionHeaders()
+                })
+                const likeData = await likeResponse.json()
+                
+                return {
+                  ...creature,
+                  story: generateStory(creature),
+                  is_liked: likeData.is_liked || false
+                }
+              } catch (error) {
+                console.warn(`Failed to fetch like status for creature ${creature.id}:`, error)
+                return {
+                  ...creature,
+                  story: generateStory(creature),
+                  is_liked: false
+                }
+              }
+            })
+          )
+          
+          setCreatures(creaturesWithLikeStatus)
+          setLoading(false)
+        }
+      } catch (error: any) {
+        console.error('Failed to fetch creatures:', error)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
-    fetchCreatures()
+    // 1초 후 실행하여 hydration 완료 후 API 호출
+    const timer = setTimeout(fetchCreatures, 1000)
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer)
+    }
   }, [])
 
   const handleLike = async (creatureId: number) => {
+    const creature = creatures.find(c => c.id === creatureId)
+    if (!creature) return
+
     setLikingCreature(creatureId)
     try {
-      const response = await fetch('/api/creatures', {
-        method: 'PATCH',
+      // 현재 좋아요 상태에 따라 추가 또는 취소
+      const method = creature.is_liked ? 'DELETE' : 'POST'
+      
+      const response = await fetch(`/api/creatures/${creatureId}/like`, {
+        method,
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id: creatureId }),
+          ...getSessionHeaders()
+        }
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to like creature')
+        // 좋아요 상태 불일치 시 POST로 재시도 (댓글 좋아요와 동일한 로직)
+        if (method === 'DELETE' && data.error?.includes('좋아요를 누르지 않은')) {
+          console.log('좋아요 상태 불일치 감지, POST로 재시도합니다')
+          const retryResponse = await fetch(`/api/creatures/${creatureId}/like`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...getSessionHeaders()
+            }
+          })
+          
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json()
+            // 상태 업데이트: 좋아요 추가
+            setCreatures(prev => prev.map(c => 
+              c.id === creatureId 
+                ? { ...c, like_count: retryData.like_count, is_liked: true }
+                : c
+            ))
+            return
+          }
+        }
+        throw new Error(data.error || '좋아요 처리에 실패했습니다')
       }
 
-      // 성공 시 좋아요 수 업데이트
-      setCreatures(prev => prev.map(creature => 
-        creature.id === creatureId 
-          ? { ...creature, like_count: (creature.like_count || 0) + 1 }
-          : creature
+      // 정상 처리 시 상태 업데이트
+      setCreatures(prev => prev.map(c => 
+        c.id === creatureId 
+          ? { 
+              ...c, 
+              like_count: data.like_count, 
+              is_liked: !creature.is_liked 
+            }
+          : c
       ))
 
-    } catch (error) {
-      console.error('좋아요 실패:', error)
-      alert('좋아요에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    } catch (error: any) {
+      console.error('좋아요 오류:', error)
+      alert(error.message || '좋아요 처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
     } finally {
       setLikingCreature(null)
     }
@@ -135,7 +215,16 @@ export default function FeedPage() {
               <ArrowLeft className="w-4 h-4 mr-2" />
               돌아가기
             </Button>
-            <Button variant="ghost" onClick={() => router.push("/rankings")} className="text-gray-300 hover:text-white">
+            <Button 
+              variant="ghost" 
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('베스트 랭킹 버튼 클릭됨')
+                router.push("/rankings")
+              }} 
+              className="text-gray-300 hover:text-white"
+            >
               <Trophy className="w-4 h-4 mr-2" />
               베스트 랭킹
             </Button>
@@ -146,11 +235,6 @@ export default function FeedPage() {
           </div>
         </div>
       </header>
-
-      {/* Header Banner Ad */}
-      <div className="px-6">
-        <HeaderBannerAd />
-      </div>
 
       {/* Main Content */}
       <main className="p-6">
@@ -172,14 +256,11 @@ export default function FeedPage() {
               </div>
 
               {creatures.map((creature, index) => (
-                <div key={creature.id}>
-                  {/* 3번째 게시물 뒤에 인라인 광고 삽입 */}
-                  {index === 2 && <FeedInlineAd />}
-                <Card key={creature.id} className="bg-slate-800 border-slate-700 shadow-xl">
+                <Card key={creature.id} className="bg-slate-800 border-slate-700 shadow-xl cursor-pointer hover:bg-slate-750 transition-colors" onClick={() => router.push(`/creatures/${creature.id}`)}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-2xl text-white mb-2">{creature.name}</CardTitle>
+                        <CardTitle className="text-2xl text-white mb-2 hover:text-purple-300 transition-colors">{creature.name}</CardTitle>
                         <Badge variant="secondary" className="bg-purple-600 text-white">
                           {typeLabels[creature.creature_type] || creature.creature_type}
                         </Badge>
@@ -227,16 +308,22 @@ export default function FeedPage() {
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-700">
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-700" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center space-x-4">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleLike(creature.id)}
                           disabled={likingCreature === creature.id}
-                          className="text-gray-400 hover:text-red-400 hover:bg-red-900/20 transition-all duration-200"
+                          className={`transition-all duration-200 ${
+                            creature.is_liked 
+                              ? 'text-red-400 hover:text-red-300' 
+                              : 'text-gray-400 hover:text-red-400 hover:bg-red-900/20'
+                          }`}
                         >
-                          <Heart className={`w-4 h-4 mr-1 ${likingCreature === creature.id ? 'animate-pulse' : ''}`} />
+                          <Heart className={`w-4 h-4 mr-1 ${
+                            likingCreature === creature.id ? 'animate-pulse' : ''
+                          } ${creature.is_liked ? 'fill-current' : ''}`} />
                           {creature.like_count || 0}
                         </Button>
                         <Button
@@ -247,6 +334,15 @@ export default function FeedPage() {
                         >
                           <Share2 className="w-4 h-4 mr-1" />
                           공유
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/creatures/${creature.id}`)}
+                          className="text-gray-400 hover:text-purple-400 hover:bg-purple-900/20 transition-all duration-200"
+                        >
+                          <MessageCircle className="w-4 h-4 mr-1" />
+                          댓글
                         </Button>
                         <ReportButton 
                           contentId={creature.id.toString()} 
@@ -261,18 +357,11 @@ export default function FeedPage() {
                     </div>
                   </CardContent>
                 </Card>
-                </div>
               ))}
-              
-              {/* Feed Bottom Ad */}
-              <ContentBottomAd />
             </div>
           )}
         </div>
       </main>
-
-      {/* Mobile Anchor Ad */}
-      <MobileAnchorAd />
     </div>
   )
 }

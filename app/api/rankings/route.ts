@@ -74,10 +74,15 @@ export async function GET(request: NextRequest) {
     };
 
     if (!statsError && totalStats) {
-      stats.totalCreatures = totalStats.length;
-      stats.totalLikes = totalStats.reduce((sum, creature) => sum + (creature.like_count || 0), 0);
-      stats.averageLikes = stats.totalCreatures > 0 ? Math.round(stats.totalLikes / stats.totalCreatures * 10) / 10 : 0;
-      stats.topScore = bestCreatures && bestCreatures.length > 0 ? (bestCreatures[0].like_count || 0) : 0;
+      const totalLikes = totalStats.reduce((sum, creature) => sum + (creature.like_count || 0), 0);
+      const totalCreatures = totalStats.length;
+      
+      stats = {
+        totalCreatures: totalCreatures,
+        totalLikes: totalLikes,
+        averageLikes: totalCreatures > 0 ? Math.round(totalLikes / totalCreatures * 10) / 10 : 0,
+        topScore: bestCreatures && bestCreatures.length > 0 ? (bestCreatures[0].like_count || 0) : 0
+      };
     }
 
     // 랭킹 정보 추가

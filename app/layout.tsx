@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { PWAInstaller } from "@/components/layout/PWAInstaller"
 import { Toaster } from "@/components/ui/toaster"
+import { AuthProvider } from "@/components/auth/AuthProvider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -80,9 +81,11 @@ export default function RootLayout({
         <link rel="preload" href="/sw.js" as="script" />
       </head>
       <body className={inter.className}>
-        {children}
-        <Toaster />
-        <PWAInstaller />
+        <AuthProvider>
+          {children}
+          <Toaster />
+          <PWAInstaller />
+        </AuthProvider>
       </body>
     </html>
   )

@@ -1,12 +1,12 @@
--- 💬 댓글 시스템 구현 - Supabase Studio에서 실행하세요
--- URL: https://supabase.com/dashboard/project/arrpuarrykptututjdnq/sql/new
+-- 💬 댓글 시스템 구현
+-- Supabase Studio > SQL Editor에서 실행하세요
 
 -- ===================
 -- 댓글 테이블 생성
 -- ===================
 
 -- 댓글 테이블 (기존 comments 테이블 확장)
-DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS comments;
 CREATE TABLE comments (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     creature_id UUID REFERENCES creatures(id) ON DELETE CASCADE NOT NULL,
@@ -23,7 +23,6 @@ CREATE TABLE comments (
 );
 
 -- 댓글 좋아요 테이블
-DROP TABLE IF EXISTS comment_likes CASCADE;
 CREATE TABLE comment_likes (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     comment_id UUID REFERENCES comments(id) ON DELETE CASCADE NOT NULL,
@@ -32,6 +31,9 @@ CREATE TABLE comment_likes (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(comment_id, user_session_id)
 );
+
+-- 댓글 신고 테이블 (기존 content_reports 활용)
+-- content_type에 'comment' 추가로 대응
 
 -- ===================
 -- 인덱스 생성 (성능 최적화)
