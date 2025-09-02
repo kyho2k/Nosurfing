@@ -252,6 +252,13 @@ curl http://localhost:3000/api/ai/limits
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+
+V### Vercel 환경변수 셋업
+Environment Variables에 아래 넣기
+	•	NEXT_PUBLIC_SUPABASE_URL
+	•	NEXT_PUBLIC_SUPABASE_ANON_KEY
+	•	OPENAI_API_KEY(쓰는 경우) 등
+
 ## 📝 라이선스
 
 이 프로젝트는 MIT 라이선스를 따릅니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참고하세요.
