@@ -72,6 +72,10 @@ export function CommentItem({
     const checkLikeStatus = async () => {
       if (typeof window === 'undefined' || likeStatusLoaded) return;
       
+      // localStorage에서 먼저 상태 확인
+      const likedComments = JSON.parse(localStorage.getItem('liked_comments') || '[]');
+      const localLiked = likedComments.includes(comment.id);
+
       try {
         const response = await fetch(`/api/comments/${comment.id}/like`, {
           method: 'GET',
@@ -80,10 +84,30 @@ export function CommentItem({
         
         if (response.ok) {
           const data = await response.json();
-          setIsLiked(data.is_liked || false);
+          const serverLiked = data.is_liked || false;
+          
+          // 서버 상태와 localStorage 상태를 비교하여 일관성 확보
+          const finalLiked = serverLiked || localLiked;
+          setIsLiked(finalLiked);
+          
+          // 불일치 시 localStorage 동기화
+          if (serverLiked !== localLiked) {
+            console.log('댓글 좋아요 상태 불일치 감지, localStorage 동기화 중...');
+            if (serverLiked && !localLiked) {
+              likedComments.push(comment.id);
+            } else if (!serverLiked && localLiked) {
+              const index = likedComments.indexOf(comment.id);
+              if (index > -1) likedComments.splice(index, 1);
+            }
+            localStorage.setItem('liked_comments', JSON.stringify(likedComments));
+          }
+        } else {
+          // 서버 요청 실패 시 localStorage만 사용
+          setIsLiked(localLiked);
         }
       } catch (error) {
-        console.warn('좋아요 상태 확인 실패:', error);
+        console.warn('좋아요 상태 확인 실패, localStorage 사용:', error);
+        setIsLiked(localLiked);
       } finally {
         setLikeStatusLoaded(true);
       }
@@ -100,8 +124,8 @@ export function CommentItem({
 
     setIsLiking(true)
     try {
-      // 첫 클릭은 항상 좋아요 추가, 이후 클릭은 토글
       const method = isLiked ? 'DELETE' : 'POST'
+      const newLikedState = !isLiked
       
       const response = await fetch(`/api/comments/${comment.id}/like`, {
         method,
@@ -114,33 +138,68 @@ export function CommentItem({
       const data = await response.json()
 
       if (!response.ok) {
-        // 좋아요가 없는 상태에서 DELETE 시도 시 POST로 재시도
-        if (method === 'DELETE' && data.error?.includes('좋아요를 누르지 않은')) {
-          console.log('좋아요 상태 불일치 감지, POST로 재시도합니다')
-          const retryResponse = await fetch(`/api/comments/${comment.id}/like`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...getSessionHeaders()
+        // 409 오류 (이미 좋아요를 누른 경우) 처리
+        if (response.status === 409 && method === 'POST') {
+          console.log('이미 좋아요를 누른 댓글입니다. 상태를 동기화합니다.')
+          setIsLiked(true)
+          // localStorage도 업데이트
+          if (typeof window !== 'undefined') {
+            const likedComments = JSON.parse(localStorage.getItem('liked_comments') || '[]');
+            if (!likedComments.includes(comment.id)) {
+              likedComments.push(comment.id);
+              localStorage.setItem('liked_comments', JSON.stringify(likedComments));
             }
-          })
-          
-          if (retryResponse.ok) {
-            setIsLiked(true)
-            setLikeCount(prev => prev + 1)
-            return
           }
+          return
         }
+
+        // 404 오류 (좋아요를 누르지 않은 댓글을 삭제 시도) 처리
+        if (response.status === 404 && method === 'DELETE') {
+          console.log('좋아요를 누르지 않은 댓글입니다. 상태를 동기화합니다.')
+          setIsLiked(false)
+          // localStorage에서도 제거
+          if (typeof window !== 'undefined') {
+            const likedComments = JSON.parse(localStorage.getItem('liked_comments') || '[]');
+            const index = likedComments.indexOf(comment.id);
+            if (index > -1) {
+              likedComments.splice(index, 1);
+              localStorage.setItem('liked_comments', JSON.stringify(likedComments));
+            }
+          }
+          return
+        }
+
         throw new Error(data.error || '좋아요 처리에 실패했습니다')
       }
 
-      setIsLiked(!isLiked)
+      // 성공 시 상태 업데이트
+      setIsLiked(newLikedState)
       setLikeCount(data.like_count)
+      
+      // localStorage에 좋아요 상태 저장
+      if (typeof window !== 'undefined') {
+        const likedComments = JSON.parse(localStorage.getItem('liked_comments') || '[]');
+        if (newLikedState) {
+          if (!likedComments.includes(comment.id)) {
+            likedComments.push(comment.id);
+          }
+        } else {
+          const index = likedComments.indexOf(comment.id);
+          if (index > -1) {
+            likedComments.splice(index, 1);
+          }
+        }
+        localStorage.setItem('liked_comments', JSON.stringify(likedComments));
+      }
+
       toast.success(data.message)
 
     } catch (error: any) {
-      console.error('좋아요 오류:', error)
-      toast.error(error.message || '좋아요 처리에 실패했습니다')
+      console.error('댓글 좋아요 오류:', error)
+      // 중복 오류는 사용자에게 표시하지 않음
+      if (!error.message?.includes('이미 좋아요') && !error.message?.includes('좋아요를 누르지 않은')) {
+        toast.error(error.message || '좋아요 처리에 실패했습니다')
+      }
     } finally {
       setIsLiking(false)
     }

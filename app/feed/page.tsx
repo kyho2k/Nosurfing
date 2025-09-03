@@ -82,34 +82,16 @@ export default function FeedPage() {
             ? JSON.parse(localStorage.getItem('liked_creatures') || '[]') 
             : [];
             
-          const creaturesWithLikeStatus = await Promise.all(
-            data.map(async (creature: Creature) => {
-              try {
-                const likeResponse = await fetch(`/api/creatures/${creature.id}/like`, {
-                  method: 'GET',
-                  headers: getSessionHeaders()
-                })
-                const likeData = await likeResponse.json()
-                
-                // 서버 상태와 localStorage 상태를 비교하여 더 정확한 상태 사용
-                const serverLiked = likeData.is_liked || false;
-                const localLiked = likedCreatures.includes(creature.id);
-                
-                return {
-                  ...creature,
-                  story: generateStory(creature),
-                  is_liked: serverLiked || localLiked
-                }
-              } catch (error) {
-                console.warn(`Failed to fetch like status for creature ${creature.id}:`, error)
-                return {
-                  ...creature,
-                  story: generateStory(creature),
-                  is_liked: likedCreatures.includes(creature.id)
-                }
-              }
-            })
-          )
+          // 서버 상태 확인 없이 localStorage만 사용하여 성능 향상 및 일관성 확보
+          const creaturesWithLikeStatus = data.map((creature: Creature) => {
+            const localLiked = likedCreatures.includes(creature.id);
+            
+            return {
+              ...creature,
+              story: generateStory(creature),
+              is_liked: localLiked
+            }
+          })
           
           setCreatures(creaturesWithLikeStatus)
           setLoading(false)

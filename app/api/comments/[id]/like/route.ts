@@ -1,6 +1,42 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase-server"
 
+// GET: 댓글 좋아요 상태 확인
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = await createServerClient()
+    const { id: commentId } = await params
+    
+    // 사용자 인증 및 세션 ID 관리
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    // 세션 ID를 헤더에서 가져오기
+    const clientSessionId = request.headers.get('x-session-id')
+    const userSessionId = user?.id || clientSessionId || crypto.randomUUID()
+
+    // 좋아요 상태 확인
+    const { data: existingLike, error: likeError } = await supabase
+      .from('comment_likes')
+      .select('id')
+      .eq('comment_id', commentId)
+      .eq('user_session_id', userSessionId)
+      .single()
+
+    return NextResponse.json({
+      is_liked: !!existingLike
+    })
+
+  } catch (error: any) {
+    console.error("GET /api/comments/[id]/like 오류:", error)
+    return NextResponse.json({
+      is_liked: false
+    })
+  }
+}
+
 // POST: 댓글 좋아요 추가
 export async function POST(
   request: NextRequest,

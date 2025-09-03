@@ -43,6 +43,12 @@ export function MiniGamePopup({ isOpen, onClose }: MiniGamePopupProps) {
   const bubblesRef = useRef<Bubble[]>([])
   const lastSpawnTimeRef = useRef<number>(0)
 
+  // 사운드 관련 ref 추가
+  const bubblePopSoundRef = useRef<HTMLAudioElement>(null)
+  const gameStartSoundRef = useRef<HTMLAudioElement>(null)
+  const gameOverSoundRef = useRef<HTMLAudioElement>(null)
+  const backgroundMusicRef = useRef<HTMLAudioElement>(null)
+
   const [gameState, setGameState] = useState<GameState>({
     isPlaying: false,
     isPaused: false,
@@ -55,6 +61,44 @@ export function MiniGamePopup({ isOpen, onClose }: MiniGamePopupProps) {
   })
 
   const [showInstructions, setShowInstructions] = useState(true)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+
+  // 사운드 재생 함수들
+  const playBubblePopSound = () => {
+    if (soundEnabled && bubblePopSoundRef.current) {
+      bubblePopSoundRef.current.currentTime = 0
+      bubblePopSoundRef.current.play().catch(() => {
+        // 자동재생이 차단된 경우 무시
+      })
+    }
+  }
+
+  const playGameStartSound = () => {
+    if (soundEnabled && gameStartSoundRef.current) {
+      gameStartSoundRef.current.play().catch(() => {})
+    }
+  }
+
+  const playGameOverSound = () => {
+    if (soundEnabled && gameOverSoundRef.current) {
+      gameOverSoundRef.current.play().catch(() => {})
+    }
+  }
+
+  const playBackgroundMusic = () => {
+    if (soundEnabled && backgroundMusicRef.current) {
+      backgroundMusicRef.current.loop = true
+      backgroundMusicRef.current.volume = 0.3 // 볼륨 30%
+      backgroundMusicRef.current.play().catch(() => {})
+    }
+  }
+
+  const stopBackgroundMusic = () => {
+    if (backgroundMusicRef.current) {
+      backgroundMusicRef.current.pause()
+      backgroundMusicRef.current.currentTime = 0
+    }
+  }
 
   // 로컬 스토리지에서 최고점수 불러오기
   useEffect(() => {
@@ -69,6 +113,9 @@ export function MiniGamePopup({ isOpen, onClose }: MiniGamePopupProps) {
   // 팝업이 닫힐 때 게임 초기화
   useEffect(() => {
     if (!isOpen) {
+      // 배경음악 정지
+      stopBackgroundMusic()
+      
       setGameState({
         isPlaying: false,
         isPaused: false,
@@ -204,6 +251,10 @@ export function MiniGamePopup({ isOpen, onClose }: MiniGamePopupProps) {
     const timer = setInterval(() => {
       setGameState(prev => {
         if (prev.timeLeft <= 1) {
+          // 배경음악 정지 및 게임 종료 사운드 재생
+          stopBackgroundMusic()
+          playGameOverSound()
+          
           if (prev.score > prev.bestScore) {
             localStorage.setItem('nosurfing-best-score', prev.score.toString())
             return { 
@@ -265,6 +316,9 @@ export function MiniGamePopup({ isOpen, onClose }: MiniGamePopupProps) {
       const clickedBubble = bubblesRef.current[clickedBubbleIndex]
       bubblesRef.current.splice(clickedBubbleIndex, 1)
 
+      // 방울 터지는 사운드 재생
+      playBubblePopSound()
+
       setGameState(prev => ({
         ...prev,
         score: prev.score + clickedBubble.points * (prev.combo + 1),
@@ -279,6 +333,12 @@ export function MiniGamePopup({ isOpen, onClose }: MiniGamePopupProps) {
   const startGame = () => {
     bubblesRef.current = []
     lastSpawnTimeRef.current = 0
+    
+    // 게임 시작 사운드 재생
+    playGameStartSound()
+    // 배경음악 시작
+    playBackgroundMusic()
+    
     setGameState({
       isPlaying: true,
       isPaused: false,
@@ -329,6 +389,15 @@ export function MiniGamePopup({ isOpen, onClose }: MiniGamePopupProps) {
                   <span>콤보: <span className="text-orange-400 font-bold">x{gameState.combo + 1}</span></span>
                 </div>
                 
+                <Button 
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  variant="outline" 
+                  size="sm"
+                  className="text-gray-300 hover:text-white"
+                >
+                  {soundEnabled ? '🔊' : '🔇'}
+                </Button>
+
                 <Button 
                   onClick={() => setShowInstructions(true)} 
                   variant="outline" 
@@ -467,6 +536,20 @@ export function MiniGamePopup({ isOpen, onClose }: MiniGamePopupProps) {
             </div>
           </div>
         )}
+        
+        {/* 사운드 요소들 */}
+        <audio ref={bubblePopSoundRef} preload="auto">
+          <source src="/sounds/bubble-pop.mp3" type="audio/mpeg" />
+        </audio>
+        <audio ref={gameStartSoundRef} preload="auto">
+          <source src="/sounds/game-start.mp3" type="audio/mpeg" />
+        </audio>
+        <audio ref={gameOverSoundRef} preload="auto">
+          <source src="/sounds/game-over.mp3" type="audio/mpeg" />
+        </audio>
+        <audio ref={backgroundMusicRef} preload="auto">
+          <source src="/sounds/background-music.mp3" type="audio/mpeg" />
+        </audio>
       </div>
     </div>
   )

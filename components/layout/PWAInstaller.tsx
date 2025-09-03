@@ -14,10 +14,19 @@ export function PWAInstaller() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
+  const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
+    // 클라이언트 사이드에서만 실행되도록 설정
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    // 클라이언트가 아니면 실행하지 않음
+    if (!isClient) return
+
     // Service Worker 등록
-    if ('serviceWorker' in navigator) {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       window.addEventListener('load', async () => {
         try {
           const registration = await navigator.serviceWorker.register('/sw.js', {
@@ -51,44 +60,47 @@ export function PWAInstaller() {
       setDeferredPrompt(e as BeforeInstallPromptEvent)
       
       // 이미 설치되었는지 확인
-      if (!window.matchMedia('(display-mode: standalone)').matches) {
+      if (typeof window !== 'undefined' && !window.matchMedia('(display-mode: standalone)').matches) {
         setShowInstallPrompt(true)
       }
     }
 
     // 앱이 이미 설치되었는지 확인
     const checkIfInstalled = () => {
-      if (window.matchMedia('(display-mode: standalone)').matches || 
-          (window.navigator as any).standalone === true) {
+      if (typeof window !== 'undefined' && 
+          (window.matchMedia('(display-mode: standalone)').matches || 
+          (window.navigator as any).standalone === true)) {
         setIsInstalled(true)
         setShowInstallPrompt(false)
       }
     }
 
     // 이벤트 리스너 등록
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    window.addEventListener('appinstalled', () => {
-      console.log('[PWA] App installed successfully')
-      setIsInstalled(true)
-      setShowInstallPrompt(false)
-      setDeferredPrompt(null)
-    })
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.addEventListener('appinstalled', () => {
+        console.log('[PWA] App installed successfully')
+        setIsInstalled(true)
+        setShowInstallPrompt(false)
+        setDeferredPrompt(null)
+      })
 
-    // 초기 설치 상태 확인
-    checkIfInstalled()
+      // 초기 설치 상태 확인
+      checkIfInstalled()
 
-    // 일정 시간 후 프롬프트 표시 (사용자 경험 향상)
-    const timer = setTimeout(() => {
-      if (deferredPrompt && !isInstalled) {
-        setShowInstallPrompt(true)
+      // 일정 시간 후 프롬프트 표시 (사용자 경험 향상)
+      const timer = setTimeout(() => {
+        if (deferredPrompt && !isInstalled) {
+          setShowInstallPrompt(true)
+        }
+      }, 3000)
+
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+        clearTimeout(timer)
       }
-    }, 3000)
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-      clearTimeout(timer)
     }
-  }, [deferredPrompt, isInstalled])
+  }, [isClient, deferredPrompt, isInstalled])
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
@@ -115,7 +127,14 @@ export function PWAInstaller() {
   const handleDismiss = () => {
     setShowInstallPrompt(false)
     // 24시간 후 다시 표시하도록 로컬 스토리지에 저장
-    localStorage.setItem('pwa-dismissed', Date.now().toString())
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pwa-dismissed', Date.now().toString())
+    }
+  }
+
+  // 클라이언트 렌더링이 완료되지 않았으면 null 반환 (hydration 방지)
+  if (!isClient) {
+    return null
   }
 
   // 이미 설치되었거나 프롬프트를 표시하지 않아야 하는 경우
@@ -123,10 +142,12 @@ export function PWAInstaller() {
     return null
   }
 
-  // 최근에 무시한 경우 체크 (24시간)
-  const dismissed = localStorage.getItem('pwa-dismissed')
-  if (dismissed && Date.now() - parseInt(dismissed) < 24 * 60 * 60 * 1000) {
-    return null
+  // 최근에 무시한 경우 체크 (24시간) - 클라이언트에서만 확인
+  if (typeof window !== 'undefined') {
+    const dismissed = localStorage.getItem('pwa-dismissed')
+    if (dismissed && Date.now() - parseInt(dismissed) < 24 * 60 * 60 * 1000) {
+      return null
+    }
   }
 
   return (
