@@ -32,9 +32,19 @@ export async function POST(request: NextRequest) {
     
     if (prompt) {
       // 사용자가 직접 프롬프트를 입력한 경우
-      imagePrompt = `Create a dark, atmospheric horror illustration based on this concept: ${prompt}. 
-Style: Digital art, dark atmosphere, mysterious lighting, Korean horror aesthetic, cinematographic composition. 
-Avoid: Excessive gore, nudity, explicit violence. Keep it scary but tasteful.`;
+      // 프롬프트를 더 안전하게 변환
+      const sanitizedPrompt = prompt
+        .replace(/근육|식스팩|몸짱|헬창|알통/g, 'mysterious figure')
+        .replace(/자랑|보여주|칭찬/g, 'appears')
+        .replace(/시력 저하|해롭|피해/g, 'unsettling presence');
+        
+      imagePrompt = `Create a dark, atmospheric horror illustration: A mysterious supernatural entity that manifests as an enigmatic figure. 
+Setting: Eerie, shadowy environment with dramatic lighting
+Style: Digital art, dark cinematic atmosphere, Korean horror aesthetic, professional composition
+Mood: Mysterious, haunting, otherworldly presence
+Technical: High contrast lighting, atmospheric shadows, muted color palette
+Content: Fantasy horror illustration, artistic interpretation, no realistic human depiction
+Avoid: Explicit content, realistic human anatomy, excessive gore. Keep it mysterious and artistic.`;
     } else {
       // 폼 데이터를 기반으로 프롬프트 생성
       const styleMap: { [key: string]: string } = {
@@ -108,7 +118,10 @@ Avoid: Explicit violence, gore, nudity. Keep it atmospheric and mysterious.`;
 
     if (error.code === 'content_policy_violation') {
       return NextResponse.json(
-        { error: "콘텐츠 정책에 위반되는 내용입니다. 다른 내용으로 시도해주세요." },
+        { 
+          error: "AI가 이미지 생성을 거부했습니다. 더 추상적이고 예술적인 표현으로 다시 시도해보세요.",
+          suggestion: "예시: '신비로운 존재', '어둠 속의 그림자', '초자연적 현상' 등으로 표현해보세요."
+        },
         { status: 400 }
       );
     }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { Heart, MessageCircle, Edit3, Trash2, MoreHorizontal, Flag } from "lucide-react"
@@ -47,12 +47,13 @@ export function CommentItem({
   currentUserId,
   depth = 0
 }: CommentItemProps) {
-  const [isLiked, setIsLiked] = useState(false) // TODO: 사용자 좋아요 상태 확인 필요
+  const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(comment.like_count)
   const [isLiking, setIsLiking] = useState(false)
   const [showReplyForm, setShowReplyForm] = useState(false)
   const [showEditForm, setShowEditForm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [likeStatusLoaded, setLikeStatusLoaded] = useState(false)
 
   const isAuthor = currentUserId === comment.author_session_id
   const isEditable = isAuthor && getMinutesAgo() <= 5
@@ -65,6 +66,33 @@ export function CommentItem({
     const created = new Date(comment.created_at)
     return Math.floor((now.getTime() - created.getTime()) / (1000 * 60))
   }
+
+  // 컴포넌트 마운트 시 좋아요 상태 확인
+  useEffect(() => {
+    const checkLikeStatus = async () => {
+      if (typeof window === 'undefined' || likeStatusLoaded) return;
+      
+      try {
+        const response = await fetch(`/api/comments/${comment.id}/like`, {
+          method: 'GET',
+          headers: getSessionHeaders()
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setIsLiked(data.is_liked || false);
+        }
+      } catch (error) {
+        console.warn('좋아요 상태 확인 실패:', error);
+      } finally {
+        setLikeStatusLoaded(true);
+      }
+    };
+
+    // 컴포넌트 마운트 후 잠시 후 실행
+    const timer = setTimeout(checkLikeStatus, 500);
+    return () => clearTimeout(timer);
+  }, [comment.id, likeStatusLoaded]);
 
   // 좋아요 토글
   const handleLike = async () => {

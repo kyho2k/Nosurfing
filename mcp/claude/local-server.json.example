@@ -1,0 +1,11 @@
+{
+  "name": "mcp-local-files",
+  "command": "/usr/local/bin/node",
+  "args": ["/absolute/path/to/your/local-file-mcp-server.js"],
+  "env": {
+    "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}"
+  },
+  "transport": {
+    "type": "stdio"
+  }
+}

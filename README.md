@@ -282,3 +282,24 @@ Environment Variables에 아래 넣기
 **⚠️ 주의사항**: 무서핑의 모든 콘텐츠는 픽션이며, 실제 공포 체험과는 무관합니다. 미성년자는 보호자의 동의 하에 이용해 주세요.
 
 **🎉 무서핑과 함께 당신만의 공포 이야기를 세상에 알려보세요!**
+
+## 🤖 AI / MCP 가이드
+
+- 공식 개요: `MCP_SETUP.md` — MCP 원칙, 충돌 방지 체크리스트
+- Gemini 브라우저 MCP: `GEMINI_CLI_BROWSER_MCP_GUIDE.md` — 실행/테스트 상세
+- Claude 사용 가이드: `CLAUDE.md` — Claude Code/데스크톱 워크플로
+- 팀 규범: `TEAM_GUIDELINES.md` — 브랜치/PR/테스트/AI 도구 사용 기준
+- PRD 템플릿: `doc/PRD_TEMPLATE.md`
+
+폴더 구조(샘플):
+```
+mcp/
+├── README.md
+├── gemini-browser/
+│   └── README.md
+├── claude/
+│   └── local-server.json.example
+└── scripts/
+    └── mcp/
+        └── start-gemini-browser.sh
+```

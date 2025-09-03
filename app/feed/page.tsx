@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Ghost, ArrowLeft, Sparkles, Clock, MapPin, User, Heart, Share2, Trophy, MessageCircle } from "lucide-react"
+import { Ghost, ArrowLeft, Sparkles, Clock, MapPin, User, Heart, Share2, Trophy, MessageCircle, Image as ImageIcon } from "lucide-react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { ReportButton } from "@/components/ui/report-button"
 import { HeaderBannerAd, FeedInlineAd, ContentBottomAd, MobileAnchorAd } from "@/components/ads/AdComponents"
@@ -22,6 +23,7 @@ interface Creature {
   like_count?: number      // 좋아요 수 추가
   story?: string
   is_liked?: boolean       // 사용자 좋아요 상태 추가
+  image_url?: string
 }
 
 const typeLabels: Record<string, string> = {
@@ -75,7 +77,11 @@ export default function FeedPage() {
         const data = await response.json()
         
         if (isMounted) {
-          // 각 게시물의 좋아요 상태를 병렬로 가져오기
+          // localStorage에서 좋아요 상태 복원하고 각 게시물의 상태를 설정
+          const likedCreatures = typeof window !== 'undefined' 
+            ? JSON.parse(localStorage.getItem('liked_creatures') || '[]') 
+            : [];
+            
           const creaturesWithLikeStatus = await Promise.all(
             data.map(async (creature: Creature) => {
               try {
@@ -85,17 +91,21 @@ export default function FeedPage() {
                 })
                 const likeData = await likeResponse.json()
                 
+                // 서버 상태와 localStorage 상태를 비교하여 더 정확한 상태 사용
+                const serverLiked = likeData.is_liked || false;
+                const localLiked = likedCreatures.includes(creature.id);
+                
                 return {
                   ...creature,
                   story: generateStory(creature),
-                  is_liked: likeData.is_liked || false
+                  is_liked: serverLiked || localLiked
                 }
               } catch (error) {
                 console.warn(`Failed to fetch like status for creature ${creature.id}:`, error)
                 return {
                   ...creature,
                   story: generateStory(creature),
-                  is_liked: false
+                  is_liked: likedCreatures.includes(creature.id)
                 }
               }
             })
@@ -167,15 +177,32 @@ export default function FeedPage() {
       }
 
       // 정상 처리 시 상태 업데이트
+      const newLikedState = !creature.is_liked;
       setCreatures(prev => prev.map(c => 
         c.id === creatureId 
           ? { 
               ...c, 
               like_count: data.like_count, 
-              is_liked: !creature.is_liked 
+              is_liked: newLikedState 
             }
           : c
       ))
+
+      // localStorage에 좋아요 상태 저장
+      if (typeof window !== 'undefined') {
+        const likedCreatures = JSON.parse(localStorage.getItem('liked_creatures') || '[]');
+        if (newLikedState) {
+          if (!likedCreatures.includes(creatureId)) {
+            likedCreatures.push(creatureId);
+          }
+        } else {
+          const index = likedCreatures.indexOf(creatureId);
+          if (index > -1) {
+            likedCreatures.splice(index, 1);
+          }
+        }
+        localStorage.setItem('liked_creatures', JSON.stringify(likedCreatures));
+      }
 
     } catch (error: any) {
       console.error('좋아요 오류:', error)
@@ -215,19 +242,6 @@ export default function FeedPage() {
               <ArrowLeft className="w-4 h-4 mr-2" />
               돌아가기
             </Button>
-            <Button 
-              variant="ghost" 
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                console.log('베스트 랭킹 버튼 클릭됨')
-                router.push("/rankings")
-              }} 
-              className="text-gray-300 hover:text-white"
-            >
-              <Trophy className="w-4 h-4 mr-2" />
-              베스트 랭킹
-            </Button>
           </div>
           <div className="flex items-center space-x-3">
             <Ghost className="w-8 h-8 text-purple-400" />
@@ -256,106 +270,46 @@ export default function FeedPage() {
               </div>
 
               {creatures.map((creature, index) => (
-                <Card key={creature.id} className="bg-slate-800 border-slate-700 shadow-xl cursor-pointer hover:bg-slate-750 transition-colors" onClick={() => router.push(`/creatures/${creature.id}`)}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-2xl text-white mb-2 hover:text-purple-300 transition-colors">{creature.name}</CardTitle>
-                        <Badge variant="secondary" className="bg-purple-600 text-white">
-                          {typeLabels[creature.creature_type] || creature.creature_type}
-                        </Badge>
-                      </div>
-                      <div className="text-right text-sm text-gray-400">
-                        <div className="flex items-center mb-1">
-                          <User className="w-3 h-3 mr-1" />
-                          익명의 목격자
+                <Card key={creature.id} className="bg-slate-800 border-slate-700 shadow-xl cursor-pointer hover:bg-slate-750 transition-colors overflow-hidden" onClick={() => router.push(`/creatures/${creature.id}`)}>
+                  <div className="relative w-full h-48 bg-slate-700">
+                    {creature.image_url ? (
+                      <Image 
+                        src={creature.image_url} 
+                        alt={creature.name}
+                        fill
+                        className="object-cover"
+                        onError={(e) => {
+                          // 이미지 로드 실패를 조용히 처리 (콘솔 에러 없이)
+                          const target = e.target as HTMLImageElement;
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('.image-error-placeholder')) {
+                            target.style.display = 'none';
+                            const placeholder = document.createElement('div');
+                            placeholder.className = 'absolute inset-0 flex items-center justify-center image-error-placeholder';
+                            placeholder.innerHTML = `
+                              <div class="text-center text-gray-400">
+                                <svg class="w-12 h-12 mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 12l2.5 3.01L15 11l4 5H5l4-4z"/>
+                                </svg>
+                                <p class="text-sm">이미지 로드 실패</p>
+                              </div>
+                            `;
+                            parent.appendChild(placeholder);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center text-gray-400">
+                          <ImageIcon className="w-12 h-12 mx-auto mb-2" />
+                          <p className="text-sm">이미지 없음</p>
                         </div>
-                        <div className="flex items-center">
-                          <Clock className="w-3 h-3 mr-1" />
-                          {new Date(creature.created_at).toLocaleDateString("ko-KR")}
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="text-purple-400 font-medium mb-1">출몰 시간</h4>
-                        <p className="text-gray-300">{creature.appearance_time}</p>
-                      </div>
-                      <div>
-                        <h4 className="text-purple-400 font-medium mb-1">출몰 장소</h4>
-                        <p className="text-gray-300 flex items-center">
-                          <MapPin className="w-4 h-4 mr-1" />
-                          {creature.location}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-purple-400 font-medium mb-2">특징</h4>
-                      <p className="text-gray-300 leading-relaxed">{creature.description}</p>
-                    </div>
-
-                    {creature.story && (
-                      <div className="bg-slate-900 p-4 rounded-lg border border-purple-500/30">
-                        <h4 className="text-purple-400 font-medium mb-2 flex items-center">
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          AI 생성 괴담
-                        </h4>
-                        <p className="text-gray-300 leading-relaxed italic">{creature.story}</p>
                       </div>
                     )}
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-700" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center space-x-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleLike(creature.id)}
-                          disabled={likingCreature === creature.id}
-                          className={`transition-all duration-200 ${
-                            creature.is_liked 
-                              ? 'text-red-400 hover:text-red-300' 
-                              : 'text-gray-400 hover:text-red-400 hover:bg-red-900/20'
-                          }`}
-                        >
-                          <Heart className={`w-4 h-4 mr-1 ${
-                            likingCreature === creature.id ? 'animate-pulse' : ''
-                          } ${creature.is_liked ? 'fill-current' : ''}`} />
-                          {creature.like_count || 0}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleShare(creature)}
-                          className="text-gray-400 hover:text-blue-400 hover:bg-blue-900/20 transition-all duration-200"
-                        >
-                          <Share2 className="w-4 h-4 mr-1" />
-                          공유
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => router.push(`/creatures/${creature.id}`)}
-                          className="text-gray-400 hover:text-purple-400 hover:bg-purple-900/20 transition-all duration-200"
-                        >
-                          <MessageCircle className="w-4 h-4 mr-1" />
-                          댓글
-                        </Button>
-                        <ReportButton 
-                          contentId={creature.id.toString()} 
-                          contentType="creature" 
-                          size="sm" 
-                          variant="ghost"
-                        />
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        #{creature.id}
-                      </div>
-                    </div>
-                  </CardContent>
+                  </div>
+                  <CardHeader>
+                    <CardTitle className="text-xl text-white truncate">{creature.name}</CardTitle>
+                  </CardHeader>
                 </Card>
               ))}
             </div>

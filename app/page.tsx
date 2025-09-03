@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Ghost, Eye, Users, TrendingUp, Gamepad2, Trophy } from "lucide-react"
 import { CreateCreatureForm } from "@/components/home/CreateCreatureForm"
+import { RankingSection } from "@/components/home/RankingSection"
 import { HeaderBannerAd, SidebarAd, MobileAnchorAd } from "@/components/ads/AdComponents"
 
 export default function HomePage() {
@@ -34,24 +35,6 @@ export default function HomePage() {
                 >
                   <Eye className="w-4 h-4 mr-2" />
                   피드 보기
-                </Button>
-              </Link>
-              <Link href="/game" passHref>
-                <Button 
-                  variant="ghost" 
-                  className="text-gray-300 hover:text-white"
-                >
-                  <Gamepad2 className="w-4 h-4 mr-2" />
-                  미니게임
-                </Button>
-              </Link>
-              <Link href="/rankings" passHref>
-                <Button 
-                  variant="ghost" 
-                  className="text-gray-300 hover:text-white"
-                >
-                  <Trophy className="w-4 h-4 mr-2" />
-                  랭킹
                 </Button>
               </Link>
               <Link href="/about" passHref>
@@ -93,60 +76,41 @@ export default function HomePage() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-                  <Button 
+                  <Button
                     size="lg"
                     onClick={() => setShowCreateForm(true)}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105"
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-24 py-12 text-4xl font-bold transition-all duration-300 transform hover:scale-105"
                   >
-                    <Ghost className="w-6 h-6 mr-3" />
+                    <Ghost className="w-8 h-8 mr-4" />
                     새로운 존재 만들기
                   </Button>
-                  <Link href="/feed" passHref>
-                    <Button 
-                      size="lg"
-                      variant="outline"
-                      className="border-purple-400 text-purple-300 hover:bg-purple-600 hover:text-white px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105"
-                    >
-                      <Eye className="w-6 h-6 mr-3" />
-                      존재들 둘러보기
-                    </Button>
-                  </Link>
-                  <Link href="/game" passHref>
-                    <Button 
-                      size="lg"
-                      variant="outline"
-                      className="border-green-400 text-green-300 hover:bg-green-600 hover:text-white px-8 py-4 text-lg font-medium transition-all duration-300 transform hover:scale-105"
-                    >
-                      <Gamepad2 className="w-6 h-6 mr-3" />
-                      팝핑 귀신방울
-                    </Button>
-                  </Link>
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
-                  <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
-                    <Users className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-                    <div className="text-xl font-bold text-white mb-1">완전 익명</div>
-                    <p className="text-gray-400 text-sm">개인정보 수집 없음</p>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+                  <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                    <Users className="w-5 h-5 text-purple-400 mx-auto mb-2" />
+                    <div className="text-xs font-bold text-white mb-1">완전 익명</div>
+                    <p className="text-gray-400 text-[10px]">개인정보 수집 없음</p>
                   </div>
-                  <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
-                    <TrendingUp className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-                    <div className="text-xl font-bold text-white mb-1">AI 생성</div>
-                    <p className="text-gray-400 text-sm">자동 이미지 & 스토리</p>
+                  <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                    <TrendingUp className="w-5 h-5 text-purple-400 mx-auto mb-2" />
+                    <div className="text-xs font-bold text-white mb-1">AI 생성</div>
+                    <p className="text-gray-400 text-[10px]">자동 이미지 & 스토리</p>
                   </div>
-                  <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
-                    <Ghost className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-                    <div className="text-xl font-bold text-white mb-1">공포 특화</div>
-                    <p className="text-gray-400 text-sm">괴담 & 호러 전용</p>
+                  <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                    <Ghost className="w-5 h-5 text-purple-400 mx-auto mb-2" />
+                    <div className="text-xs font-bold text-white mb-1">공포 특화</div>
+                    <p className="text-gray-400 text-[10px]">괴담 & 호러 전용</p>
                   </div>
-                  <div className="bg-slate-800/50 rounded-lg p-6 border border-slate-700">
-                    <Gamepad2 className="w-8 h-8 text-green-400 mx-auto mb-3" />
-                    <div className="text-xl font-bold text-white mb-1">미니게임</div>
-                    <p className="text-gray-400 text-sm">팝핑 귀신방울</p>
+                  <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                    <Gamepad2 className="w-5 h-5 text-green-400 mx-auto mb-2" />
+                    <div className="text-xs font-bold text-white mb-1">미니게임</div>
+                    <p className="text-gray-400 text-[10px]">팝핑 귀신방울</p>
                   </div>
                 </div>
               </div>
+              <RankingSection />
             </>
           ) : (
             /* Create Form Section */

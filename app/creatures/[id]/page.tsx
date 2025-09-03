@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Ghost, ArrowLeft, Sparkles, Clock, MapPin, User, Heart, Share2, MessageCircle, Loader2 } from "lucide-react"
+import { Ghost, ArrowLeft, Sparkles, Clock, MapPin, User, Heart, Share2, MessageCircle, Loader2, Image as ImageIcon } from "lucide-react"
+import Image from "next/image"
 import { ReportButton } from "@/components/ui/report-button"
 import { ShareButton } from "@/components/ui/share-button"
 import { CommentList } from "@/components/comments"
@@ -22,6 +23,7 @@ interface Creature {
   created_at: string
   like_count?: number
   story?: string
+  image_url?: string
 }
 
 const typeLabels: Record<string, string> = {
@@ -92,15 +94,19 @@ export default function CreatureDetailPage() {
   // 현재 사용자 세션 ID 가져오기 (익명 사용자용)
   useEffect(() => {
     const getOrCreateSessionId = () => {
-      let sessionId = localStorage.getItem('nosurfing_session_id')
-      if (!sessionId) {
-        sessionId = crypto.randomUUID()
-        localStorage.setItem('nosurfing_session_id', sessionId)
+      // 클라이언트 사이드에서만 실행되도록 보장
+      if (typeof window !== 'undefined') {
+        let sessionId = localStorage.getItem('nosurfing_session_id')
+        if (!sessionId) {
+          sessionId = crypto.randomUUID()
+          localStorage.setItem('nosurfing_session_id', sessionId)
+        }
+        setCurrentUserId(sessionId)
       }
-      setCurrentUserId(sessionId)
     }
 
-    getOrCreateSessionId()
+    // 컴포넌트가 마운트된 후에만 실행
+    setTimeout(getOrCreateSessionId, 100)
   }, [])
 
   const handleLike = async () => {
@@ -187,7 +193,43 @@ export default function CreatureDetailPage() {
       <main className="p-6">
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Creature Detail */}
-          <Card className="bg-slate-800 border-slate-700 shadow-xl">
+          <Card className="bg-slate-800 border-slate-700 shadow-xl overflow-hidden">
+            {creature.image_url ? (
+              <div className="relative w-full h-96 bg-slate-700">
+                <Image 
+                  src={creature.image_url} 
+                  alt={creature.name}
+                  fill
+                  className="object-cover"
+                  onError={(e) => {
+                    // 이미지 로드 실패를 조용히 처리 (콘솔 에러 없이)
+                    const target = e.target as HTMLImageElement;
+                    const parent = target.parentElement;
+                    if (parent && !parent.querySelector('.image-error-placeholder')) {
+                      target.style.display = 'none';
+                      const placeholder = document.createElement('div');
+                      placeholder.className = 'absolute inset-0 flex items-center justify-center image-error-placeholder';
+                      placeholder.innerHTML = `
+                        <div class="text-center text-gray-400">
+                          <svg class="w-16 h-16 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 12l2.5 3.01L15 11l4 5H5l4-4z"/>
+                          </svg>
+                          <p class="text-lg">이미지를 불러올 수 없습니다</p>
+                        </div>
+                      `;
+                      parent.appendChild(placeholder);
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="w-full h-96 bg-slate-700 flex items-center justify-center">
+                <div className="text-center text-gray-400">
+                  <ImageIcon className="w-16 h-16 mx-auto mb-4" />
+                  <p className="text-lg">이미지 없음</p>
+                </div>
+              </div>
+            )}
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
